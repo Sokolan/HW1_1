@@ -1,0 +1,46 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/valery/CLionProjects/untitled/Commands.cpp
+unistd.h
+-
+string.h
+-
+iostream
+-
+vector
+-
+sstream
+-
+sys/wait.h
+-
+sys/types.h
+-
+sys/stat.h
+-
+fcntl.h
+-
+iomanip
+-
+fstream
+-
+Commands.h
+/home/valery/CLionProjects/untitled/Commands.h
+
+/home/valery/CLionProjects/untitled/Commands.h
+sys/types.h
+-
+sys/stat.h
+-
+fcntl.h
+-
+unistd.h
+-
+vector
+-
+

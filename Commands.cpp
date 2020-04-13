@@ -1,0 +1,185 @@
+#include <unistd.h>
+#include <string.h>
+#include <iostream>
+#include <vector>
+#include <sstream>
+#include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <iomanip>
+#include <fstream>
+#include "Commands.h"
+
+
+using namespace std;
+
+const std::string WHITESPACE = " \n\r\t\f\v";
+
+#if 0
+#define FUNC_ENTRY()  \
+  cerr << __PRETTY_FUNCTION__ << " --> " << endl;
+
+#define FUNC_EXIT()  \
+  cerr << __PRETTY_FUNCTION__ << " <-- " << endl;
+#else
+#define FUNC_ENTRY()
+#define FUNC_EXIT()
+#endif
+
+#define DEBUG_PRINT cerr << "DEBUG: "
+
+#define EXEC(path, arg) \
+  execvp((path), (arg));
+
+string _ltrim(const std::string& s)
+{
+  size_t start = s.find_first_not_of(WHITESPACE);
+  return (start == std::string::npos) ? "" : s.substr(start);
+}
+
+string _rtrim(const std::string& s)
+{
+  size_t end = s.find_last_not_of(WHITESPACE);
+  return (end == std::string::npos) ? "" : s.substr(0, end + 1);
+}
+
+string _trim(const std::string& s)
+{
+  return _rtrim(_ltrim(s));
+}
+
+int _parseCommandLine(const char* cmd_line, char** args) {
+  FUNC_ENTRY()
+  int i = 0;
+  std::istringstream iss(_trim(string(cmd_line)));
+  for(std::string s; iss >> s; ) {
+    args[i] = new char[s.length()+1];
+    memset(args[i], 0, s.length()+1);
+    strcpy(args[i], s.c_str());
+    args[++i] = nullptr;
+  }
+  return i;
+
+  FUNC_EXIT()
+}
+
+bool _isBackgroundComamnd(const char* cmd_line) {
+  const string str(cmd_line);
+  return str[str.find_last_not_of(WHITESPACE)] == '&';
+}
+
+void _removeBackgroundSign(char* cmd_line) {
+  const string str(cmd_line);
+  // find last character other than spaces
+  int idx = str.find_last_not_of(WHITESPACE);
+  // if all characters are spaces then return
+  if (idx == string::npos) {
+    return;
+  }
+  // if the command line does not end with & then return
+  if (cmd_line[idx] != '&') {
+    return;
+  }
+  // replace the & (background sign) with space and then remove all tailing spaces.
+  cmd_line[idx] = ' ';
+  // truncate the command line string up to the last non-space character
+  cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
+}
+
+// TODO: Add your implementation for classes in Commands.h
+
+/*
+ * Command
+ */
+
+Command::Command(const char *cmd_line) {
+    args = new char*[COMMAND_MAX_ARGS+2];
+    num_of_args = _parseCommandLine(cmd_line, args);
+    name = args[0];
+}
+
+Command::~Command() {
+    for(int i = 0; i < num_of_args ; ++i){
+        delete args[i];
+    }
+    delete[] args;
+}
+
+char * Command::get_arg(int i) const {
+    return args[i];
+}
+
+/*
+ * BuiltInCommand
+ */
+
+BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {};
+
+/*
+ * RedirectCommand
+ */
+
+RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line) {}
+
+void RedirectionCommand::execute() {
+    int fd = open(get_arg(2), O_WRONLY | O_CREAT , S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    smash.changeCurrFd(fd);
+    smash.executeCommand(get_arg(0));
+    smash.changeCurrFd(STDOUT_FILENO);
+}
+
+/*
+ *GetCurrDirCommand
+ */
+
+GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {};
+
+void GetCurrDirCommand::execute() {
+    char* current_dir_name = get_current_dir_name();
+    write(smash.getCurrFd(), current_dir_name, strlen(current_dir_name));
+    write(smash.getCurrFd(), "\n", 1);
+}
+
+SmallShell::SmallShell() : curr_fd(STDOUT_FILENO) {
+// TODO: add your implementation
+}
+
+SmallShell::~SmallShell() {
+// TODO: add your implementation
+}
+
+/**
+* Creates and returns a pointer to Command class which matches the given command line (cmd_line)
+*/
+Command * SmallShell::CreateCommand(const char* cmd_line) {
+	// For example:
+
+  string cmd_s = string(cmd_line);
+
+  if (cmd_s.find(">") != string::npos){
+      return new RedirectionCommand(cmd_line);
+  }
+
+  if (cmd_s.find("pwd") == 0) {
+      return new GetCurrDirCommand(cmd_line);
+  }
+
+  return nullptr;
+}
+
+void SmallShell::executeCommand(const char *cmd_line) {
+  // TODO: Add your implementation here
+  // for example:
+  Command* cmd = CreateCommand(cmd_line);
+  cmd->execute();
+  // Please note that you must fork smash process for some commands (e.g., external commands....)
+}
+
+void SmallShell::changeCurrFd(int new_fd) {
+    curr_fd = new_fd;
+}
+
+int SmallShell::getCurrFd() const {
+    return curr_fd;
+}
