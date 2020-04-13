@@ -10,6 +10,7 @@
 #include <iomanip>
 #include <fstream>
 #include "Commands.h"
+#include <time.h>
 
 
 using namespace std;
@@ -187,7 +188,36 @@ void ShowPidCommand::execute() {
     //TODO: handle with errors (perror)
 }
 
-SmallShell::SmallShell() : last_pwd(""), curr_fd(STDOUT_FILENO) {
+/*
+ * ChangePrompt
+ */
+
+ChangePrompt::ChangePrompt(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void ChangePrompt::execute() {
+    if (get_arg(1) == nullptr) {
+        smash.changePrompt("");
+        return;
+    }
+    smash.changePrompt(get_arg(1));
+}
+
+
+
+/*
+ * JobsList
+ */
+
+JobsList::JobsList() : jobsList() {}
+
+void JobsList::addJob(Command *cmd, bool isStopped) {
+    time_t tmp_time;
+    auto* jobEntry = new JobEntry(getpid(), isStopped, jobsList.size()+1, time(nullptr));
+    jobsList.push_back(jobEntry);
+}
+
+
+SmallShell::SmallShell() : prompt(def_prompt), last_pwd(""), curr_fd(STDOUT_FILENO), jobsList() {
 // TODO: add your implementation
 }
 
@@ -198,36 +228,49 @@ SmallShell::~SmallShell() {
 /**
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
-Command * SmallShell::CreateCommand(const char* cmd_line) {
-	// For example:
 
-  string cmd_s = string(cmd_line);
+Command *SmallShell::CreateCommand(const char *cmd_line) {
+    // For example:
 
-  if (cmd_s.find(">") != string::npos){
-      return new RedirectionCommand(cmd_line);
-  }
+    string cmd_s = string(cmd_line);
 
-  if (cmd_s.find("pwd") == 0) {
-      return new GetCurrDirCommand(cmd_line);
-  }
+    if (cmd_s.find(">") != string::npos) {
+        return new RedirectionCommand(cmd_line);
+    }
 
-  if (cmd_s.find("showpid") == 0) {
-      return new ShowPidCommand(cmd_line);
-  }
+    if (cmd_s.find("pwd") == 0) {
+        return new GetCurrDirCommand(cmd_line);
+    }
 
-  if (cmd_s.find("cd") == 0) {
-      return new ChangeDirCommand(cmd_line, smash.getLastPwd());
-  }
+    if (cmd_s.find("showpid") == 0) {
+        return new ShowPidCommand(cmd_line);
+    }
 
-  return nullptr;
+    if (cmd_s.find("cd") == 0) {
+        return new ChangeDirCommand(cmd_line, smash.getLastPwd());
+    }
+
+    if (cmd_s.find("chprompt") == 0) {
+        return new ChangePrompt(cmd_line);
+    }
+
+    return nullptr;
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
-  // TODO: Add your implementation here
-  // for example:
-  Command* cmd = CreateCommand(cmd_line);
-  cmd->execute();
-  // Please note that you must fork smash process for some commands (e.g., external commands....)
+    // TODO: Add your implementation here
+    // for example:
+    Command *cmd = CreateCommand(cmd_line);
+    cmd->execute();
+    // Please note that you must fork smash process for some commands (e.g., external commands....)
+}
+
+void SmallShell::changePrompt(string new_prompt) {
+    if (new_prompt == "") {
+        prompt = def_prompt;
+    } else {
+        prompt = new_prompt;
+    }
 }
 
 void SmallShell::changeCurrFd(int new_fd) {
@@ -245,3 +288,8 @@ void SmallShell::changeLastPwd(string new_pwd) {
 string SmallShell::getLastPwd() const {
     return last_pwd;
 }
+
+string SmallShell::getPrompt() const {
+    return prompt;
+}
+

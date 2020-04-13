@@ -31,6 +31,8 @@ fstream
 -
 Commands.h
 /home/valery/CLionProjects/untitled/Commands.h
+time.h
+-
 
 /home/valery/CLionProjects/untitled/Commands.h
 sys/types.h
@@ -43,4 +45,32 @@ unistd.h
 -
 vector
 -
+list
+-
+
+/home/valery/CLionProjects/untitled/signals.cpp
+iostream
+-
+signal.h
+-
+signals.h
+/home/valery/CLionProjects/untitled/signals.h
+Commands.h
+/home/valery/CLionProjects/untitled/Commands.h
+
+/home/valery/CLionProjects/untitled/signals.h
+
+/home/valery/CLionProjects/untitled/smash.cpp
+iostream
+-
+unistd.h
+-
+sys/wait.h
+-
+signal.h
+-
+Commands.h
+/home/valery/CLionProjects/untitled/Commands.h
+signals.h
+/home/valery/CLionProjects/untitled/signals.h
 

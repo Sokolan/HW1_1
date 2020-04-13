@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <vector>
+#include <list>
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
@@ -115,12 +116,20 @@ class HistoryCommand : public BuiltInCommand {
 class JobsList {
  public:
   class JobEntry {
-   // TODO: Add your data members
+  public:
+      pid_t pid;
+      bool stopped;
+      int job_id;
+      time_t time_added;
+      explicit JobEntry(pid_t pid_in, bool stopped_in, int job_id_in, time_t time_added_in) : pid(pid_in),
+                                    stopped(stopped_in), job_id(job_id_in), time_added(time_added_in) {};
+      bool operator<(JobEntry& jobEntry) const {return job_id < jobEntry.job_id;}
   };
  // TODO: Add your data members
+ list<JobEntry*> jobsList;
  public:
     JobsList();
-    ~JobsList();
+    ~JobsList() {};
     void addJob(Command* cmd, bool isStopped = false);
     void printJobsList();
     void killAllJobs();
@@ -173,35 +182,57 @@ class CopyCommand : public BuiltInCommand {
     void execute() override;
 };
 
+class ChangePrompt : public BuiltInCommand {
+public:
+    ChangePrompt(const char* cmd_line);
+    virtual ~ChangePrompt() {}
+    void execute() override;
+};
+
 // TODO: add more classes if needed
 // maybe chprompt , timeout ?
 
 class SmallShell {
- private:
+
+private:
     // TODO: Add your data members
     SmallShell();
+
+    const string def_prompt = "smash";
+    string prompt;
     string last_pwd;
     int curr_fd;
- public:
-    Command *CreateCommand(const char* cmd_line);
-    SmallShell(SmallShell const&)      = delete; // disable copy ctor
-    void operator=(SmallShell const&)  = delete; // disable = operator
-    static SmallShell& getInstance() // make SmallShell singleton
+    JobsList jobsList;
+public:
+    Command *CreateCommand(const char *cmd_line);
+
+    SmallShell(SmallShell const &) = delete; // disable copy ctor
+    void operator=(SmallShell const &) = delete; // disable = operator
+    static SmallShell &getInstance() // make SmallShell singleton
     {
-    static SmallShell instance; // Guaranteed to be destroyed.
-    // Instantiated on first use.
-    return instance;
+        static SmallShell instance; // Guaranteed to be destroyed.
+        // Instantiated on first use.
+        return instance;
     }
+
     ~SmallShell();
-    void executeCommand(const char* cmd_line);
+
+    void executeCommand(const char *cmd_line);
+
+    void changePrompt(string new_prompt);
 
     void changeCurrFd(int new_fd);
+
     int getCurrFd() const;
 
     void changeLastPwd(string new_pwd);
+
     string getLastPwd() const;
+
+    string getPrompt() const;
     // TODO: add extra methods as needed
 };
+
 static SmallShell& smash = SmallShell::getInstance();
 
 
