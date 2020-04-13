@@ -173,6 +173,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
   // for example:
   Command* cmd = CreateCommand(cmd_line);
   cmd->execute();
+  void* t;
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
