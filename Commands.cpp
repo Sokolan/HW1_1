@@ -94,12 +94,18 @@ void _removeBackgroundSign(char* cmd_line) {
  */
 
 Command::Command(const char *cmd_line) {
+
+    char* cmd_line_tmp = new char[strlen(cmd_line)+1];
+    cmd_line_command = strcpy(cmd_line_tmp, cmd_line);
     args = new char*[COMMAND_MAX_ARGS+2];
+
     num_of_args = _parseCommandLine(cmd_line, args);
+
     name = args[0];
 }
 
 Command::~Command() {
+    delete cmd_line_command;
     for(int i = 0; i < num_of_args ; ++i){
         delete args[i];
     }
@@ -123,10 +129,35 @@ BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {};
 RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line) {}
 
 void RedirectionCommand::execute() {
-    int fd = open(get_arg(2), O_WRONLY | O_CREAT , S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+    int fd = open(get_arg(2), O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     smash.changeCurrFd(fd);
     smash.executeCommand(get_arg(0));
     smash.changeCurrFd(STDOUT_FILENO);
+}
+
+/*
+ * ChangeDirCommand
+ */
+
+ChangeDirCommand::ChangeDirCommand(const char *cmd_line, string plastPwd) : BuiltInCommand(cmd_line),
+        lastPwd(plastPwd) {} ;
+
+
+void ChangeDirCommand::execute() {
+
+    if(strcmp(get_arg(1),"-") == 0){
+        string new_dir = lastPwd;
+    }
+    else {
+        lastPwd = get_arg(1);
+    }
+
+    smash.changeLastPwd(get_current_dir_name());
+
+    chdir(lastPwd.c_str());
+
+
 }
 
 /*
@@ -136,12 +167,27 @@ void RedirectionCommand::execute() {
 GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {};
 
 void GetCurrDirCommand::execute() {
-    char* current_dir_name = get_current_dir_name();
-    write(smash.getCurrFd(), current_dir_name, strlen(current_dir_name));
-    write(smash.getCurrFd(), "\n", 1);
+    string current_dir_name = get_current_dir_name();
+    current_dir_name += "\n";
+    write(smash.getCurrFd(), current_dir_name.c_str(), current_dir_name.length());
+    //TODO: handle with errors (perror)
 }
 
-SmallShell::SmallShell() : curr_fd(STDOUT_FILENO) {
+/*
+ * ShowPidCommand
+ */
+
+ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+void ShowPidCommand::execute() {
+    pid_t pid = getpid();
+    string message = "smash pid is ";
+    message += std::to_string(pid) += "\n";
+    write(smash.getCurrFd(), message.c_str(), message.length());
+    //TODO: handle with errors (perror)
+}
+
+SmallShell::SmallShell() : last_pwd(""), curr_fd(STDOUT_FILENO) {
 // TODO: add your implementation
 }
 
@@ -165,6 +211,14 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
       return new GetCurrDirCommand(cmd_line);
   }
 
+  if (cmd_s.find("showpid") == 0) {
+      return new ShowPidCommand(cmd_line);
+  }
+
+  if (cmd_s.find("cd") == 0) {
+      return new ChangeDirCommand(cmd_line, smash.getLastPwd());
+  }
+
   return nullptr;
 }
 
@@ -173,7 +227,6 @@ void SmallShell::executeCommand(const char *cmd_line) {
   // for example:
   Command* cmd = CreateCommand(cmd_line);
   cmd->execute();
-  void* t;
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
@@ -183,4 +236,12 @@ void SmallShell::changeCurrFd(int new_fd) {
 
 int SmallShell::getCurrFd() const {
     return curr_fd;
+}
+
+void SmallShell::changeLastPwd(string new_pwd) {
+    last_pwd = new_pwd;
+}
+
+string SmallShell::getLastPwd() const {
+    return last_pwd;
 }

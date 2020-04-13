@@ -15,6 +15,7 @@ using namespace std;
 class Command {
 // TODO: Add your data members
     string name;
+    const char* cmd_line_command;
     char** args;
     int num_of_args;
  public:
@@ -59,8 +60,10 @@ class RedirectionCommand : public Command {
 };
 
 class ChangeDirCommand : public BuiltInCommand {
-// TODO: Add your data members public:
-    ChangeDirCommand(const char* cmd_line, char** plastPwd);
+// TODO: Add your data members
+    string lastPwd;
+public:
+    explicit ChangeDirCommand(const char* cmd_line, string plastPwd);
     virtual ~ChangeDirCommand() {}
     void execute() override;
 };
@@ -80,6 +83,7 @@ class ShowPidCommand : public BuiltInCommand {
 };
 
 class JobsList;
+
 class QuitCommand : public BuiltInCommand {
 // TODO: Add your data members public:
     QuitCommand(const char* cmd_line, JobsList* jobs);
@@ -176,6 +180,7 @@ class SmallShell {
  private:
     // TODO: Add your data members
     SmallShell();
+    string last_pwd;
     int curr_fd;
  public:
     Command *CreateCommand(const char* cmd_line);
@@ -192,6 +197,9 @@ class SmallShell {
 
     void changeCurrFd(int new_fd);
     int getCurrFd() const;
+
+    void changeLastPwd(string new_pwd);
+    string getLastPwd() const;
     // TODO: add extra methods as needed
 };
 static SmallShell& smash = SmallShell::getInstance();
