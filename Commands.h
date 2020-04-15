@@ -16,10 +16,12 @@ using namespace std;
 class Command {
 // TODO: Add your data members
     string name;
-    const char* cmd_line_command;
+
+ public:
     char** args;
     int num_of_args;
- public:
+
+    char* cmd_line_command;
     explicit Command(const char* cmd_line);
     char* get_arg(int i) const;
     virtual ~Command();

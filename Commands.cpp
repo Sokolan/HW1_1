@@ -217,6 +217,32 @@ void JobsList::addJob(Command *cmd, bool isStopped) {
 }
 
 
+ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
+
+void ExternalCommand::execute() {
+    pid_t pid = fork();
+//    char** args_tmp = new char*[num_of_args+1];
+//    char* cmd_new = new char[strlen(cmd_line_command)+1+3];
+//    strcpy(cmd_new, cmd_line_command);
+//    strcat(cmd_new, " -c");
+//    args_tmp[num_of_args] = new char[3];
+//    strcpy(args_tmp[num_of_args], " -c");
+//    for (int i=0; i<num_of_args ; i++){
+//        args_tmp[i+1] = new char[strlen(args[i])+1];
+//        strcpy(args_tmp[i+1],args[i]);
+//    }
+//
+//    args_tmp[num_of_args+1] = nullptr;
+    char* args_t[] = {"-c", "ls", NULL};
+    if (pid == 0) { //child
+        execv("/bin/bash", args_t);
+    }
+    else{
+        wait(nullptr);
+    }
+}
+
+
 SmallShell::SmallShell() : prompt(def_prompt), last_pwd(""), curr_fd(STDOUT_FILENO), jobsList() {
 // TODO: add your implementation
 }
@@ -254,7 +280,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return new ChangePrompt(cmd_line);
     }
 
-    return nullptr;
+    return new ExternalCommand(cmd_line);
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
