@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <utility>
 #include <vector>
 #include <list>
 
@@ -120,19 +121,22 @@ class JobsList {
   class JobEntry {
   public:
       pid_t pid;
-      bool stopped;
       int job_id;
       time_t time_added;
-      explicit JobEntry(pid_t pid_in, bool stopped_in, int job_id_in, time_t time_added_in) : pid(pid_in),
-                                    stopped(stopped_in), job_id(job_id_in), time_added(time_added_in) {};
+      bool stopped;
+      string cmd;
+
+      explicit JobEntry(pid_t pid_in, int job_id_in, time_t time_added_in, bool stopped_in, string  cmd_in) : pid(pid_in),
+                                    stopped(stopped_in), job_id(job_id_in), time_added(time_added_in), cmd(std::move(cmd_in)) {};
+
       bool operator<(JobEntry& jobEntry) const {return job_id < jobEntry.job_id;}
   };
  // TODO: Add your data members
- list<JobEntry*> jobsList;
+ list<JobEntry> jobsList;
  public:
     JobsList();
     ~JobsList() {};
-    void addJob(Command* cmd, bool isStopped = false);
+    void addJob(const char* cmd, pid_t pid,bool isStopped = false);
     void printJobsList();
     void killAllJobs();
     void removeFinishedJobs();
@@ -140,6 +144,7 @@ class JobsList {
     void removeJobById(int jobId);
     JobEntry * getLastJob(int* lastJobId);
     JobEntry *getLastStoppedJob(int *jobId);
+    int findMaxJobId() const;
     // TODO: Add extra methods or modify exisitng ones as needed
 };
 
@@ -204,8 +209,12 @@ private:
     string prompt;
     string last_pwd;
     int curr_fd;
+    pid_t pid;
     JobsList jobsList;
+    const char* cmd_line_fg;
+
 public:
+    pid_t current_fg_pid;
     Command *CreateCommand(const char *cmd_line);
 
     SmallShell(SmallShell const &) = delete; // disable copy ctor
@@ -221,7 +230,7 @@ public:
 
     void executeCommand(const char *cmd_line);
 
-    void changePrompt(string new_prompt);
+    void changePrompt(const string& new_prompt);
 
     void changeCurrFd(int new_fd);
 
@@ -232,10 +241,15 @@ public:
     string getLastPwd() const;
 
     string getPrompt() const;
+
+    pid_t getPid() const;
+
+    const char* getCmdLine() const;
     // TODO: add extra methods as needed
+
+    void addJob(Command *cmd, pid_t pidIn, bool isStopped);
 };
 
-static SmallShell& smash = SmallShell::getInstance();
 
 
 

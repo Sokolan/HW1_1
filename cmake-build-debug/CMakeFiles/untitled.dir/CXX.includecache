@@ -9,9 +9,11 @@
 /home/valery/CLionProjects/untitled/Commands.cpp
 unistd.h
 -
-string.h
+cstring
 -
 iostream
+-
+utility
 -
 vector
 -
