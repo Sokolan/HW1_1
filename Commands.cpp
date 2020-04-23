@@ -132,11 +132,17 @@ RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line)
 
 void RedirectionCommand::execute() {
     SmallShell& smash = SmallShell::getInstance();
-    int fd = open(get_arg(2), O_WRONLY | O_CREAT | O_TRUNC , S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    int fd = open(get_arg(2), O_WRONLY | O_TRUNC , S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    if (fd == -1){
+        return perror("smash error: open failed");
+    }
     smash.changeCurrFd(fd);
     smash.executeCommand(get_arg(0));
     smash.changeCurrFd(STDOUT_FILENO);
-    close(fd);
+    if(close(fd) == -1){
+        perror("smash error: close failed");
+    }
+
 }
 
 /*
@@ -155,10 +161,17 @@ void ChangeDirCommand::execute() {
     else {
         lastPwd = get_arg(1);
     }
+    char* cdn = get_current_dir_name();
 
-    SmallShell::getInstance().changeLastPwd(get_current_dir_name());
+    if (cdn == nullptr){
+        return perror("smash error: get_current_dir_name failed");
+    }
 
-    chdir(lastPwd.c_str());
+    SmallShell::getInstance().changeLastPwd(cdn);
+
+    if(chdir(lastPwd.c_str()) == -1){
+        perror("smash error: chdir failed");
+    }
 
 
 }
@@ -170,10 +183,14 @@ void ChangeDirCommand::execute() {
 GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {};
 
 void GetCurrDirCommand::execute() {
-    string current_dir_name = get_current_dir_name();
-    current_dir_name += "\n";
-    write(SmallShell::getInstance().getCurrFd(), current_dir_name.c_str(), current_dir_name.length());
-    //TODO: handle with errors (perror)
+    char* current_dir_name = get_current_dir_name();
+    if(current_dir_name == nullptr){
+        return perror("smash error: get_current_dir_name failed");
+    }
+    strcat(current_dir_name, "\n");
+    if(strlen(current_dir_name) != write(SmallShell::getInstance().getCurrFd(), current_dir_name, strlen(current_dir_name))){
+        perror("smash error: write failed");
+    }
 }
 
 /*
@@ -186,8 +203,9 @@ void ShowPidCommand::execute() {
     pid_t pid = SmallShell::getInstance().getPid();
     string message = "smash pid is ";
     message += std::to_string(pid) += "\n";
-    write(SmallShell::getInstance().getCurrFd(), message.c_str(), message.length());
-    //TODO: handle with errors (perror)
+    if (message.length() != write(SmallShell::getInstance().getCurrFd(), message.c_str(), message.length())){
+        perror("smash error: write failed");
+    }
 }
 
 /*
@@ -197,7 +215,7 @@ void ShowPidCommand::execute() {
 ChangePrompt::ChangePrompt(const char *cmd_line) : BuiltInCommand(cmd_line) {}
 
 void ChangePrompt::execute() {
-    if (get_arg(1) == nullptr) {
+    if (get_arg(1) == nullptr || _isBackgroundComamnd(get_arg(1))) {
         SmallShell::getInstance().changePrompt("");
         return;
     }
@@ -219,12 +237,20 @@ void JobsList::addJob(const char* cmd, pid_t pid, bool isStopped) {
 }
 
 void JobsList::printJobsList() {
-    for(list<JobEntry>::iterator it = jobsList.begin(); it < jobsList.end() ; ++it){
-        cout << "[" << it->job_id << "] " << it->cmd << " : " << difftime(time(nullptr), it->time_added) << " secs";
-        if(it->stopped){
-            cout << "(stopped)";
+    for (auto & it : jobsList){
+        string job = "[";
+        job += std::to_string(it.job_id) += "] ";
+        job += it.cmd;
+        job += " : ";
+        job += difftime(time(nullptr), it.time_added);
+        job += " secs";
+        if(it.stopped){
+            job += "(stopped)";
         }
-        cout << endl;
+        job += "\n";
+        if(job.length() != write(SmallShell::getInstance().getCurrFd(), job.c_str(), job.length())){
+            perror("smash error: write failed");
+        }
     }
 }
 
@@ -244,6 +270,9 @@ void ExternalCommand::execute() {
         args_t[2] = cmd_line_command;
         args_t[3] = nullptr;
         execv(args_t[0], const_cast<char**>(args_t));
+    }
+    else if (pid == -1){
+        perror("smash error: fork failed");
     }
     else{
         SmallShell::getInstance().current_fg_pid = pid;
@@ -269,7 +298,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
 
     string cmd_s = string(cmd_line);
 
-    if (cmd_s.find(">") != string::npos) {
+    if (cmd_s.find('>') != string::npos) {
         return new RedirectionCommand(cmd_line);
     }
 
@@ -337,7 +366,7 @@ const char * SmallShell::getCmdLine() const {
     return cmd_line_fg;
 }
 
-void SmallShell::addJob(Command *cmd, pid_t pidIn, bool isStopped) {
+void SmallShell::addJob(const char* cmd, pid_t pidIn, bool isStopped) {
     jobsList.addJob(cmd, pidIn, isStopped);
 }
 

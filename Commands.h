@@ -210,10 +210,10 @@ private:
     string last_pwd;
     int curr_fd;
     pid_t pid;
-    JobsList jobsList;
     const char* cmd_line_fg;
-
 public:
+
+    JobsList jobsList;
     pid_t current_fg_pid;
     Command *CreateCommand(const char *cmd_line);
 
@@ -247,7 +247,7 @@ public:
     const char* getCmdLine() const;
     // TODO: add extra methods as needed
 
-    void addJob(Command *cmd, pid_t pidIn, bool isStopped);
+    void addJob(const char* cmd, pid_t pidIn, bool isStopped);
 };
 
 
