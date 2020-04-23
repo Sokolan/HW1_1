@@ -1,0 +1,38 @@
+BuiltInCommands:
+
+	chprompt <new-prompt>
+	class: ChangePrompt
+	done.
+
+	showpid
+	class: ShowPidCommand
+	done.
+
+	pwd
+	class: GetCurrDirCommand
+	done.
+	
+	cd <new-path>
+	class: ChangeDirCommand
+	done.
+
+	jobs
+	class: JobsList
+
+	cp <old-file-path> <new-file-path>
+	class: CopyCommand
+
+	bg <job-id>
+	class: BackgroundCommand
+
+	fg <job-id>
+	class: ForegroundCommand
+
+	kill -<signum> <job-id>
+	class: KillCommand
+
+	quit [kill]
+	class: QuitCommand
+
+    externalCommand
+    works.

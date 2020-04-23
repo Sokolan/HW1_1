@@ -1,0 +1,52 @@
+    no SIGKILL\SIGSTP for the SMASH proccess yet need to be taken care of.
+
+    empty command (with only spaces) should do nothing:
+        smash> #blanks#
+        smash>
+
+
+    chprompt:
+        1. should ignore "&" in the end of the prompt name.
+
+    cd:
+        1. cd without parameters should do nothing.
+        2. cd to current pwd considered as a change for "-" argument.
+        3. if syscall cd failed then last_path should remain the same.
+        4. if getcwd returned an error no need to do nothing but printing the error
+            and return.
+
+    jobs:
+        1. if no jobs in jobs list nothing will happen if user enters "jobs".
+        2. if jobid < 1 search for it and return "job doesn't exist".
+
+
+    quit:
+        1. quit <args> kill - will be treated as - quit kill.
+
+    redirection of command:
+        1. case like cmd>path is legal and should be redirected.
+        2. won't be combined with pipe (command > path | command).
+        3. things like "> file.txt" or "pwd >" won't be tested.
+        4. "<<<" or ">>>.." ect won't be tested.
+        5. if opening FD failed print error and return.
+
+
+    background &:
+        1. things like "sleep 100& SOMETHING" won't be tested.
+        2. won't be tested more than one "&" in the command.
+        3. in pipe command the "&" will be given only in the end of the command for the 2 commands
+            to run in the background and things like "command& | command" won't be tested.
+        4. the "&" will appear only in the end of the cmd_line. @87_f4
+
+
+    pipe |:
+        1. built-in commands with pipes are special case and can run in the background.
+        2. things like "|" or "command |" or "| command" won't be tested.
+
+
+
+
+    errors:
+        1. arguments checking should be done before perror.
+
+
