@@ -19,6 +19,7 @@ int main(int argc, char* argv[]) {
 
     //TODO: setup sig alarm handler
     while(true) {
+        smash.jobsList.removeFinishedJobs();
         std::cout << smash.getPrompt() << "> "; // TODO: change this (why?)
         std::string cmd_line;
         std::getline(std::cin, cmd_line);

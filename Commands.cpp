@@ -34,6 +34,7 @@ const std::string WHITESPACE = " \n\r\t\f\v";
 #define EXEC(path, arg) \
   execvp((path), (arg));
 
+
 string _ltrim(const std::string& s)
 {
   size_t start = s.find_first_not_of(WHITESPACE);
@@ -132,17 +133,48 @@ RedirectionCommand::RedirectionCommand(const char *cmd_line) : Command(cmd_line)
 
 void RedirectionCommand::execute() {
     SmallShell& smash = SmallShell::getInstance();
-    int fd = open(get_arg(2), O_WRONLY | O_TRUNC , S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+    int fd = open(findRedirection().c_str(), O_WRONLY | O_TRUNC , S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (fd == -1){
         return perror("smash error: open failed");
     }
-    smash.changeCurrFd(fd);
+
+    int std_out = dup(STDOUT_FILENO);
+
+    if (std_out == -1){
+        perror("smash error: dup failed");
+        return;
+    }
+
+    if (dup2(fd, STDOUT_FILENO) == -1){
+        perror("smash error: dup2 failed");
+        return;
+    }
+
     smash.executeCommand(get_arg(0));
-    smash.changeCurrFd(STDOUT_FILENO);
+
+    if(dup2(std_out, STDOUT_FILENO) == -1){
+        perror("smash error: dup2 failed");
+        return;
+    }
+
+    if(close(std_out) == -1){
+        perror("smash error: close failed");
+    }
+
     if(close(fd) == -1){
         perror("smash error: close failed");
     }
 
+}
+
+string RedirectionCommand::findRedirection() const {
+    string i(cmd_line_command);
+    int k = i.find('>');
+    i = i.substr(++k);
+    i = _trim(i);
+
+    return i;
 }
 
 /*
@@ -188,7 +220,7 @@ void GetCurrDirCommand::execute() {
         return perror("smash error: get_current_dir_name failed");
     }
     strcat(current_dir_name, "\n");
-    if(strlen(current_dir_name) != write(SmallShell::getInstance().getCurrFd(), current_dir_name, strlen(current_dir_name))){
+    if(strlen(current_dir_name) != write(STDOUT_FILENO, current_dir_name, strlen(current_dir_name))){
         perror("smash error: write failed");
     }
 }
@@ -203,7 +235,7 @@ void ShowPidCommand::execute() {
     pid_t pid = SmallShell::getInstance().getPid();
     string message = "smash pid is ";
     message += std::to_string(pid) += "\n";
-    if (message.length() != write(SmallShell::getInstance().getCurrFd(), message.c_str(), message.length())){
+    if (message.length() != write(STDOUT_FILENO, message.c_str(), message.length())){
         perror("smash error: write failed");
     }
 }
@@ -233,7 +265,7 @@ JobsList::JobsList() : jobsList() {}
 void JobsList::addJob(const char* cmd, pid_t pid, bool isStopped) {
 //    time_t tmp_time;
     JobEntry jobEntry(pid , findMaxJobId()+1, time(nullptr), isStopped, cmd);
-    jobsList.push_back(jobEntry);
+    jobsList.push_front(jobEntry);
 }
 
 void JobsList::printJobsList() {
@@ -245,17 +277,51 @@ void JobsList::printJobsList() {
         job += difftime(time(nullptr), it.time_added);
         job += " secs";
         if(it.stopped){
-            job += "(stopped)";
+            job += " (stopped)";
         }
         job += "\n";
-        if(job.length() != write(SmallShell::getInstance().getCurrFd(), job.c_str(), job.length())){
+        if(job.length() != write(STDOUT_FILENO, job.c_str(), job.length())){
             perror("smash error: write failed");
         }
     }
 }
 
+
+//jobslist is sorted if this method is called
 int JobsList::findMaxJobId() const {
     return jobsList.front().job_id;
+}
+
+void JobsList::removeFinishedJobs() {
+    auto it = jobsList.begin();
+    while ( it != jobsList.end()){
+        if(waitpid(it->pid, nullptr, WNOHANG) == it->pid){
+            jobsList.erase(it++);
+        }
+        else{
+            ++it;
+        }
+    }
+}
+
+JobsList::JobEntry * JobsList::getJobById(int jobId) {
+
+    for (auto & it : jobsList){
+        if(it.job_id == jobId){
+            return &it;
+        }
+    }
+    return nullptr;
+}
+
+JobsList::JobEntry* JobsList::getJobByPid(pid_t pid) {
+
+    for (auto & it : jobsList){
+        if(it.pid == pid){
+            return &it;
+        }
+    }
+    return nullptr;
 }
 
 ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
@@ -281,6 +347,69 @@ void ExternalCommand::execute() {
 }
 
 
+
+ForegroundCommand::ForegroundCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {}
+
+
+//TODO check if we need to continue after all syntax errors
+void ForegroundCommand::execute() {
+
+    SmallShell& smash = SmallShell::getInstance();
+    JobsList::JobEntry* jobEntry = nullptr;
+    if(get_arg(1) == nullptr){
+        jobEntry = smash.jobsList.getJobById(smash.jobsList.findMaxJobId());
+        if (jobEntry == nullptr){
+            string error = "smash error: fg: jobs list is empty\n";
+            if(write(STDERR_FILENO, error.c_str(), error.length()) != error.length())
+                perror("smash error: write failed");
+            return;
+        }
+    }
+    else{
+        string error = "smash error: fg: invalid arguments";
+        if (get_arg(2) != nullptr){
+            if(write(STDERR_FILENO, error.c_str(), error.length()) != error.length())
+                perror("smash error: write failed");
+            return;
+        }
+        try{
+            stoi(get_arg(1));
+        }
+        catch (std::invalid_argument& e) {
+            if(write(STDERR_FILENO, error.c_str(), error.length()) != error.length())
+                perror("smash error: write failed");
+            return;
+        }
+        catch (std::out_of_range& e) {
+            if(write(STDERR_FILENO, error.c_str(), error.length()) != error.length())
+                perror("smash error: write failed");
+            return;
+        }
+        jobEntry = smash.jobsList.getJobById(stoi(get_arg(1)));
+        if(jobEntry == nullptr){
+            error = "smash error: fg: job-id ";
+            error += to_string(stoi(get_arg(1)));
+            error +=" does not exist\n";
+            if(write(STDERR_FILENO, error.c_str(), error.length()) != error.length())
+                perror("smash error: write failed");
+            return;
+        }
+    }
+
+    string fg_message = jobEntry->cmd;
+    fg_message += " : ";
+    fg_message += to_string((jobEntry->pid));
+    fg_message += "\n";
+
+    if(write(STDOUT_FILENO, fg_message.c_str(), fg_message.length()) != fg_message.length())
+        perror("smash error: write failed");
+    smash.current_fg_pid = jobEntry->pid;
+    kill(jobEntry->pid, SIGCONT);
+    waitpid(jobEntry->pid, nullptr, WUNTRACED);
+
+}
+
+
 SmallShell::SmallShell() : prompt(def_prompt), last_pwd(""), curr_fd(STDOUT_FILENO), pid(getpid()),jobsList() {
 
 }
@@ -302,6 +431,10 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return new RedirectionCommand(cmd_line);
     }
 
+    if (cmd_s.find("fg") == 0){
+        return new ForegroundCommand(cmd_line);
+    }
+
     if (cmd_s.find("pwd") == 0) {
         return new GetCurrDirCommand(cmd_line);
     }
@@ -318,6 +451,18 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return new ChangePrompt(cmd_line);
     }
 
+    if(_isBackgroundComamnd(cmd_line)){
+        pid_t pid_external = fork();
+
+        if(pid_external == 0){
+            _removeBackgroundSign(const_cast<char*>(cmd_line));
+        }
+
+        if(pid_external > 0){
+            SmallShell::getInstance().jobsList.addJob(cmd_line, pid_external);
+            return nullptr;
+        }
+    }
     return new ExternalCommand(cmd_line);
 }
 
@@ -325,8 +470,14 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // TODO: Add your implementation here
     // for example:
     Command *cmd = CreateCommand(cmd_line);
+    if (cmd == nullptr){
+        return;
+    }
     SmallShell::getInstance().cmd_line_fg = cmd_line;
     cmd->execute();
+    if(getpid() != SmallShell::getInstance().getPid()){
+        exit(0);
+    }
     // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 

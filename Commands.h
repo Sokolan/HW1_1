@@ -59,6 +59,7 @@ class RedirectionCommand : public Command {
     explicit RedirectionCommand(const char* cmd_line);
     virtual ~RedirectionCommand() {}
     void execute() override;
+    string findRedirection() const;
     //void prepare() override;
     //void cleanup() override;
 };
@@ -108,13 +109,6 @@ class CommandsHistory {
     void printHistory();
 };
 
-class HistoryCommand : public BuiltInCommand {
- // TODO: Add your data members
- public:
-    HistoryCommand(const char* cmd_line, CommandsHistory* history);
-    virtual ~HistoryCommand() {}
-    void execute() override;
-};
 
 class JobsList {
  public:
@@ -128,8 +122,10 @@ class JobsList {
 
       explicit JobEntry(pid_t pid_in, int job_id_in, time_t time_added_in, bool stopped_in, string  cmd_in) : pid(pid_in),
                                     stopped(stopped_in), job_id(job_id_in), time_added(time_added_in), cmd(std::move(cmd_in)) {};
-
       bool operator<(JobEntry& jobEntry) const {return job_id < jobEntry.job_id;}
+      bool operator==(const JobEntry& jobEntry) const{
+          return (this->pid == jobEntry.pid);
+      }
   };
  // TODO: Add your data members
  list<JobEntry> jobsList;
@@ -141,10 +137,12 @@ class JobsList {
     void killAllJobs();
     void removeFinishedJobs();
     JobEntry * getJobById(int jobId);
+    JobEntry* getJobByPid(pid_t pid);
     void removeJobById(int jobId);
     JobEntry * getLastJob(int* lastJobId);
     JobEntry *getLastStoppedJob(int *jobId);
     int findMaxJobId() const;
+
     // TODO: Add extra methods or modify exisitng ones as needed
 };
 
@@ -167,13 +165,13 @@ class KillCommand : public BuiltInCommand {
 class ForegroundCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-    ForegroundCommand(const char* cmd_line, JobsList* jobs);
+    explicit ForegroundCommand(const char* cmd_line);
     virtual ~ForegroundCommand() {}
     void execute() override;
 };
 
 class BackgroundCommand : public BuiltInCommand {
- // TODO: Add your data members
+
  public:
     BackgroundCommand(const char* cmd_line, JobsList* jobs);
     virtual ~BackgroundCommand() {}

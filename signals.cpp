@@ -8,8 +8,13 @@ using namespace std;
 void ctrlZHandler(int sig_num) {
     SmallShell& smash = SmallShell::getInstance();
     kill(smash.current_fg_pid, SIGSTOP);
-    smash.addJob(smash.getCmdLine(), smash.current_fg_pid, true);
-	// TODO: Add your implementation
+    JobsList::JobEntry* jobEntry = smash.jobsList.getJobByPid(smash.current_fg_pid);
+    if(jobEntry != nullptr) {
+        jobEntry->time_added = time(nullptr);
+    }
+    else{
+        smash.addJob(smash.getCmdLine(), smash.current_fg_pid, true);
+    }
 }
 
 void ctrlCHandler(int sig_num) {

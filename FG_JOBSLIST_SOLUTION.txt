@@ -1,0 +1,11 @@
+if a fg command was entered by a user, our solution will be to take
+the job and send SIGCONT to the corresponding PID.
+
+if CTRL+Z was entered by the user then we will check if the PID is in the jobs-list
+if it is we will just reset the timer of this job.
+if it's not in the jobs-list we will add it as a new job.
+
+the job will be removed from the jobs list in the smash.cpp
+in the command:
+"        smash.jobsList.removeFinishedJobs(); "
+when it will be finished or when it will get CTRL+C.
