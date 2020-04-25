@@ -265,7 +265,7 @@ JobsList::JobsList() : jobsList() {}
 void JobsList::addJob(const char* cmd, pid_t pid, bool isStopped) {
 //    time_t tmp_time;
     JobEntry jobEntry(pid , findMaxJobId()+1, time(nullptr), isStopped, cmd);
-    jobsList.push_front(jobEntry);
+    jobsList.push_back(jobEntry);
 }
 
 void JobsList::printJobsList() {
@@ -274,7 +274,7 @@ void JobsList::printJobsList() {
         job += std::to_string(it.job_id) += "] ";
         job += it.cmd;
         job += " : ";
-        job += difftime(time(nullptr), it.time_added);
+        job += std::to_string(difftime(time(nullptr), it.time_added));
         job += " secs";
         if(it.stopped){
             job += " (stopped)";
@@ -286,10 +286,9 @@ void JobsList::printJobsList() {
     }
 }
 
-
 //jobslist is sorted if this method is called
 int JobsList::findMaxJobId() const {
-    return jobsList.front().job_id;
+    return jobsList.back().job_id;
 }
 
 void JobsList::removeFinishedJobs() {
@@ -324,17 +323,97 @@ JobsList::JobEntry* JobsList::getJobByPid(pid_t pid) {
     return nullptr;
 }
 
+JobsList::JobEntry * JobsList::getLastStoppedJob() {
+    JobEntry* je = nullptr;
+    for(auto & it : jobsList){
+        if(it.stopped)
+            je = &it;
+    }
+    return je;
+}
+
+
+
+void JobsCommand::execute() {
+    SmallShell::getInstance().jobsList.printJobsList();
+}
+
+
+
+
+void KillCommand::execute() {
+    string error = "smash error: kill: invalid arguments\n";
+    if(num_of_args != 3){
+        if(write(STDOUT_FILENO, error.c_str(), error.length()) != error.length()){
+            perror("smash error: write failed");
+        }
+        return;
+    }
+    if (string((get_arg(1))).find("-") != 0){
+        if(write(STDOUT_FILENO, error.c_str(), error.length()) != error.length()){
+            perror("smash error: write failed");
+        }
+        return;
+    }
+    try{
+        stoi(get_arg(1));
+        stoi(get_arg(2));
+    }
+    catch (std::invalid_argument& e) {
+        if(write(STDERR_FILENO, error.c_str(), error.length()) != error.length())
+            perror("smash error: write failed");
+        return;
+    }
+    catch (std::out_of_range& e) {
+        if(write(STDERR_FILENO, error.c_str(), error.length()) != error.length())
+            perror("smash error: write failed");
+        return;
+    }
+
+    JobsList::JobEntry* jobEntry = SmallShell::getInstance().jobsList.getJobById(stoi(get_arg(2)));
+    if (jobEntry == nullptr){
+        error = "smash error: kill: job-id ";
+        error += to_string(stoi(get_arg(2)));
+        error += " does not exist";
+        if(write(STDOUT_FILENO, error.c_str(), error.length()) != error.length()){
+            perror("smash error: write failed");
+        }
+        return;
+    }
+    //signals SIGINT and SIGCONT won'y be tested
+    if(kill(jobEntry->pid, ((-1)*stoi(get_arg(1)))) == -1){
+        perror("smash error: kill failed");
+    }
+
+    string message = "signal number ";
+    message += to_string(stoi(get_arg(1))*(-1)) += " was sent to pid ";
+    message += to_string(jobEntry->pid) += "\n";
+
+    if(write(STDOUT_FILENO, message.c_str(), message.length()) != message.length()){
+        perror("smash error: write failed");
+    }
+
+}
+
+
+
 ExternalCommand::ExternalCommand(const char *cmd_line) : Command(cmd_line) {}
 
 void ExternalCommand::execute() {
     pid_t pid = fork();
-
+    bool isBackground = _isBackgroundComamnd(cmd_line_command);
+    string copy_cmd(cmd_line_command);
+    if (isBackground){
+        _removeBackgroundSign(cmd_line_command);
+    }
     if (pid == 0) { //child
         const char **args_t = new const char*[4];
         args_t[0] = "/bin/bash";
         args_t[1] = "-c";
         args_t[2] = cmd_line_command;
         args_t[3] = nullptr;
+        //changing the groupID of the forked process
+        setpgrp();
         execv(args_t[0], const_cast<char**>(args_t));
     }
     else if (pid == -1){
@@ -342,7 +421,13 @@ void ExternalCommand::execute() {
     }
     else{
         SmallShell::getInstance().current_fg_pid = pid;
-        waitpid(pid, nullptr,  WUNTRACED);
+        if(isBackground){
+            waitpid(pid, nullptr, WNOHANG);
+            SmallShell::getInstance().jobsList.addJob(copy_cmd.c_str(), pid);
+        }
+        else{
+            waitpid(pid, nullptr,  WUNTRACED);
+        }
     }
 }
 
@@ -385,6 +470,8 @@ void ForegroundCommand::execute() {
                 perror("smash error: write failed");
             return;
         }
+
+
         jobEntry = smash.jobsList.getJobById(stoi(get_arg(1)));
         if(jobEntry == nullptr){
             error = "smash error: fg: job-id ";
@@ -404,10 +491,79 @@ void ForegroundCommand::execute() {
     if(write(STDOUT_FILENO, fg_message.c_str(), fg_message.length()) != fg_message.length())
         perror("smash error: write failed");
     smash.current_fg_pid = jobEntry->pid;
+    jobEntry->stopped = false;
     kill(jobEntry->pid, SIGCONT);
     waitpid(jobEntry->pid, nullptr, WUNTRACED);
 
 }
+
+
+void BackgroundCommand::execute() {
+
+    SmallShell& smash = SmallShell::getInstance();
+    JobsList::JobEntry* jobEntry = nullptr;
+
+    if(get_arg(1) == nullptr){
+        jobEntry = smash.jobsList.getLastStoppedJob();
+        if (jobEntry == nullptr){
+            string error = "smash error: bg: there is no stopped jobs to resume\n";
+            if(write(STDERR_FILENO, error.c_str(), error.length()) != error.length())
+                perror("smash error: write failed");
+            return;
+        }
+    }
+
+    else{
+        string error = "smash error: bg: invalid arguments\n";
+        if (get_arg(2) != nullptr){
+            if(write(STDERR_FILENO, error.c_str(), error.length()) != error.length())
+                perror("smash error: write failed");
+            return;
+        }
+        try{
+            stoi(get_arg(1));
+        }
+        catch (std::invalid_argument& e) {
+            if(write(STDERR_FILENO, error.c_str(), error.length()) != error.length())
+                perror("smash error: write failed");
+            return;
+        }
+        catch (std::out_of_range& e) {
+            if(write(STDERR_FILENO, error.c_str(), error.length()) != error.length())
+                perror("smash error: write failed");
+            return;
+        }
+
+
+        jobEntry = smash.jobsList.getJobById(stoi(get_arg(1)));
+        if(jobEntry == nullptr){
+            error = "smash error: bg: job-id ";
+            error += to_string(stoi(get_arg(1)));
+            error +=" does not exist\n";
+            if(write(STDERR_FILENO, error.c_str(), error.length()) != error.length())
+                perror("smash error: write failed");
+            return;
+        }
+
+        if (!(jobEntry->stopped)){
+            error = "smash error: bg: job-id ";
+            error += to_string(stoi(get_arg(1)));
+            error += " is already running in the background\n";
+            if(write(STDERR_FILENO, error.c_str(), error.length()) != error.length())
+                perror("smash error: write failed");
+            return;
+        }
+    }
+
+    jobEntry->stopped = false;
+    kill(jobEntry->pid, SIGCONT);
+    waitpid(jobEntry->pid, nullptr, WNOHANG);
+}
+
+
+
+
+
 
 
 SmallShell::SmallShell() : prompt(def_prompt), last_pwd(""), curr_fd(STDOUT_FILENO), pid(getpid()),jobsList() {
@@ -431,8 +587,16 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return new RedirectionCommand(cmd_line);
     }
 
+    if (cmd_s.find("jobs") == 0) {
+        return new JobsCommand(cmd_line);
+    }
+
     if (cmd_s.find("fg") == 0){
         return new ForegroundCommand(cmd_line);
+    }
+
+    if (cmd_s.find("bg") == 0){
+        return new BackgroundCommand(cmd_line);
     }
 
     if (cmd_s.find("pwd") == 0) {
@@ -451,18 +615,10 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return new ChangePrompt(cmd_line);
     }
 
-    if(_isBackgroundComamnd(cmd_line)){
-        pid_t pid_external = fork();
-
-        if(pid_external == 0){
-            _removeBackgroundSign(const_cast<char*>(cmd_line));
-        }
-
-        if(pid_external > 0){
-            SmallShell::getInstance().jobsList.addJob(cmd_line, pid_external);
-            return nullptr;
-        }
+    if (cmd_s.find("kill") == 0) {
+        return new KillCommand(cmd_line);
     }
+
     return new ExternalCommand(cmd_line);
 }
 

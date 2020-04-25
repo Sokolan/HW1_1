@@ -96,19 +96,6 @@ class QuitCommand : public BuiltInCommand {
     void execute() override;
 };
 
-class CommandsHistory {
- protected:
-  class CommandHistoryEntry {
-	  // TODO: Add your data members
-  };
- // TODO: Add your data members
- public:
-    CommandsHistory();
-    ~CommandsHistory() {}
-    void addRecord(const char* cmd_line);
-    void printHistory();
-};
-
 
 class JobsList {
  public:
@@ -140,7 +127,7 @@ class JobsList {
     JobEntry* getJobByPid(pid_t pid);
     void removeJobById(int jobId);
     JobEntry * getLastJob(int* lastJobId);
-    JobEntry *getLastStoppedJob(int *jobId);
+    JobEntry *getLastStoppedJob();
     int findMaxJobId() const;
 
     // TODO: Add extra methods or modify exisitng ones as needed
@@ -149,7 +136,7 @@ class JobsList {
 class JobsCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-    JobsCommand(const char* cmd_line, JobsList* jobs);
+    explicit JobsCommand(const char* cmd_line) : BuiltInCommand(cmd_line){};
     virtual ~JobsCommand() {}
     void execute() override;
 };
@@ -157,7 +144,7 @@ class JobsCommand : public BuiltInCommand {
 class KillCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-    KillCommand(const char* cmd_line, JobsList* jobs);
+    explicit KillCommand(const char* cmd_line) : BuiltInCommand(cmd_line) {};
     virtual ~KillCommand() {}
     void execute() override;
 };
@@ -173,7 +160,7 @@ class ForegroundCommand : public BuiltInCommand {
 class BackgroundCommand : public BuiltInCommand {
 
  public:
-    BackgroundCommand(const char* cmd_line, JobsList* jobs);
+    explicit BackgroundCommand(const char* cmd_line) : BuiltInCommand(cmd_line) {};
     virtual ~BackgroundCommand() {}
     void execute() override;
 };

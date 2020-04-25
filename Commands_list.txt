@@ -18,15 +18,18 @@ BuiltInCommands:
 
 	jobs
 	class: JobsList
+	done.
 
 	cp <old-file-path> <new-file-path>
 	class: CopyCommand
 
 	bg <job-id>
 	class: BackgroundCommand
+    done.
 
 	fg <job-id>
 	class: ForegroundCommand
+	done.
 
 	kill -<signum> <job-id>
 	class: KillCommand
@@ -36,3 +39,5 @@ BuiltInCommands:
 
     externalCommand
     works.
+
+    pipeCommand
