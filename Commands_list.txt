@@ -33,6 +33,7 @@ BuiltInCommands:
 
 	kill -<signum> <job-id>
 	class: KillCommand
+	done.
 
 	quit [kill]
 	class: QuitCommand

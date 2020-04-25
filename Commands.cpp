@@ -340,7 +340,6 @@ void JobsCommand::execute() {
 
 
 
-
 void KillCommand::execute() {
     string error = "smash error: kill: invalid arguments\n";
     if(num_of_args != 3){
