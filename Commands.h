@@ -16,7 +16,6 @@ using namespace std;
 
 class Command {
 // TODO: Add your data members
-    string name;
 
  public:
     char** args;
@@ -46,20 +45,24 @@ class ExternalCommand : public Command {
 };
 
 class PipeCommand : public Command {
-  // TODO: Add your data members
+    string command1;
+    string command2;
+    bool bg;
+    bool std_err;
  public:
-    PipeCommand(const char* cmd_line);
-    virtual ~PipeCommand() {}
+    explicit PipeCommand(const char* cmd_line);
+    ~PipeCommand() override = default;
     void execute() override;
 };
 
 class RedirectionCommand : public Command {
- // TODO: Add your data members
+    string redirection;
+    string command;
+    bool append;
  public:
     explicit RedirectionCommand(const char* cmd_line);
     virtual ~RedirectionCommand() {}
     void execute() override;
-    string findRedirection() const;
     //void prepare() override;
     //void cleanup() override;
 };
@@ -89,16 +92,19 @@ class ShowPidCommand : public BuiltInCommand {
 
 class JobsList;
 
+//class TimeOut;
+
 class QuitCommand : public BuiltInCommand {
-// TODO: Add your data members public:
-    QuitCommand(const char* cmd_line, JobsList* jobs);
+    bool kill_arg;
+public:
+    explicit QuitCommand(const char* cmd_line);
     virtual ~QuitCommand() {}
     void execute() override;
 };
 
 
 class JobsList {
- public:
+public:
   class JobEntry {
   public:
       pid_t pid;
@@ -114,11 +120,11 @@ class JobsList {
           return (this->pid == jobEntry.pid);
       }
   };
- // TODO: Add your data members
- list<JobEntry> jobsList;
- public:
+private:
+    list<JobEntry> jobsList;
+public:
     JobsList();
-    ~JobsList() {};
+    ~JobsList() = default;;
     void addJob(const char* cmd, pid_t pid,bool isStopped = false);
     void printJobsList();
     void killAllJobs();
@@ -126,11 +132,10 @@ class JobsList {
     JobEntry * getJobById(int jobId);
     JobEntry* getJobByPid(pid_t pid);
     void removeJobById(int jobId);
-    JobEntry * getLastJob(int* lastJobId);
+//    JobEntry * getLastJob(int* lastJobId);
     JobEntry *getLastStoppedJob();
     int findMaxJobId() const;
-
-    // TODO: Add extra methods or modify exisitng ones as needed
+    int numOfJobs() const;
 };
 
 class JobsCommand : public BuiltInCommand {
@@ -165,9 +170,21 @@ class BackgroundCommand : public BuiltInCommand {
     void execute() override;
 };
 
+class TimeOutCommand : public BuiltInCommand{
+    string command;
+    time_t duration;
+
+public:
+    explicit TimeOutCommand(const char* cmd_line);
+    virtual ~TimeOutCommand() {}
+    void execute() override;
+};
 
 // TODO: should it really inhirit from BuiltInCommand ?
 class CopyCommand : public BuiltInCommand {
+    string input_file;
+    string output_file;
+    bool bg_command;
  public:
     CopyCommand(const char* cmd_line);
     virtual ~CopyCommand() {}
@@ -181,8 +198,29 @@ public:
     void execute() override;
 };
 
-// TODO: add more classes if needed
-// maybe chprompt , timeout ?
+/*
+class TimeOut{
+public:
+    class TimeEntry{
+    public:
+        string cmd_line_command;
+        time_t timestamp;
+        int duration;
+        pid_t pid;
+
+        TimeEntry(const string& cmd_line_command_in, int duration_in, pid_t pid_in);
+        bool operator==(const TimeEntry& timeEntry) const;
+        bool operator<(const TimeEntry& timeEntry) const;
+    };
+private:
+    list<TimeEntry> timeList;
+public:
+    TimeOut();
+    void addItem(const string& cmd_line, int duration, pid_t pid);
+    TimeEntry* firstTimeEntry();
+    void removeFirstTimeEntry();
+};
+ */
 
 class SmallShell {
 
@@ -198,9 +236,11 @@ private:
     const char* cmd_line_fg;
 public:
 
+    bool fg_is_pipe;
     JobsList jobsList;
+//    TimeOut timeOut;
     pid_t current_fg_pid;
-    Command *CreateCommand(const char *cmd_line);
+    static Command *CreateCommand(const char *cmd_line);
 
     SmallShell(SmallShell const &) = delete; // disable copy ctor
     void operator=(SmallShell const &) = delete; // disable = operator
@@ -213,7 +253,7 @@ public:
 
     ~SmallShell();
 
-    void executeCommand(const char *cmd_line);
+    static void executeCommand(const char *cmd_line);
 
     void changePrompt(const string& new_prompt);
 

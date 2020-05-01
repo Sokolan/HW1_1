@@ -17,6 +17,20 @@ int main(int argc, char* argv[]) {
         perror("smash error: failed to set ctrl-C handler");
     }
 
+
+
+//    struct sigaction sa;
+//    sa.sa_handler = alarmHandler;
+//    sigemptyset(&sa.sa_mask);
+//    sa.sa_flags = SA_RESTART;
+//
+//    if(sigaction(SIGALRM , &sa, nullptr) == -1) {
+//        perror("smash error: failed to set SIGALRM handler");
+//    }
+
+
+
+
     //TODO: setup sig alarm handler
     while(true) {
         std::cout << smash.getPrompt() << "> "; // TODO: change this (why?)

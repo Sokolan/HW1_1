@@ -22,6 +22,7 @@ BuiltInCommands:
 
 	cp <old-file-path> <new-file-path>
 	class: CopyCommand
+	done.
 
 	bg <job-id>
 	class: BackgroundCommand
@@ -37,8 +38,10 @@ BuiltInCommands:
 
 	quit [kill]
 	class: QuitCommand
+	:(
 
     externalCommand
     works.
 
     pipeCommand
+    works.
