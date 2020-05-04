@@ -40,10 +40,15 @@ void ctrlZHandler(int sig_num) {
 void ctrlCHandler(int sig_num) {
     string error = "smash: got ctrl-C\n";
     write_with_error(error);
-    kill(SmallShell::getInstance().current_fg_pid, SIGKILL);
+    SmallShell& smash = SmallShell::getInstance();
+    kill(smash.current_fg_pid, SIGKILL);
+    JobsList::JobEntry* jobEntry = smash.jobsList.getJobByPid(smash.current_fg_pid);
+    error = "process ";
+    error += to_string(jobEntry->pid) += " got killed\n";
+    write_with_error(error);
   // TODO: Add your implementation
 }
-
+/*
 void alarmHandler(int sig_num) {
     string message = "smash: got an alarm\n";
     write_with_error(message);
@@ -65,4 +70,4 @@ void alarmHandler(int sig_num) {
     }
 
 }
-
+*/

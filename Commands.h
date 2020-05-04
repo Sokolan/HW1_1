@@ -169,7 +169,7 @@ class BackgroundCommand : public BuiltInCommand {
     virtual ~BackgroundCommand() {}
     void execute() override;
 };
-
+/*
 class TimeOutCommand : public BuiltInCommand{
     string command;
     time_t duration;
@@ -179,7 +179,7 @@ public:
     virtual ~TimeOutCommand() {}
     void execute() override;
 };
-
+*/
 // TODO: should it really inhirit from BuiltInCommand ?
 class CopyCommand : public BuiltInCommand {
     string input_file;

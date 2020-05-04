@@ -309,8 +309,18 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line, string plastPwd) : Buil
 
 
 void ChangeDirCommand::execute() {
+    if(get_arg(1) == nullptr){
+        return;
+    }
+    if(get_arg(2) != nullptr){
+        write_with_error(string("smash error: too many arguments\n"));
+    }
 
     if(strcmp(get_arg(1),"-") == 0){
+        if(lastPwd.empty()){
+            write_with_error(string("smash error: cd: OLDPWD not set\n"));
+            return;
+        }
         string new_dir = lastPwd;
     }
     else {
@@ -537,11 +547,14 @@ void KillCommand::execute() {
     if (jobEntry == nullptr){
         error = "smash error: kill: job-id ";
         error += to_string(stoi(get_arg(2)));
-        error += " does not exist";
+        error += " does not exist\n";
         write_with_error(error);
         return;
     }
     //signals SIGINT and SIGCONT won'y be tested
+    if ((-1)*stoi(get_arg(1)) < -1 || (-1)*stoi(get_arg(1)) > 32){
+        write_with_error(string("smash error: kill: invalid arguments\n"));
+    }
     if(kill(jobEntry->pid, ((-1)*stoi(get_arg(1)))) == -1){
         perror("smash error: kill failed");
     }
