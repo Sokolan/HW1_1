@@ -59,6 +59,7 @@ class RedirectionCommand : public Command {
     string redirection;
     string command;
     bool append;
+    bool isBackground;
  public:
     explicit RedirectionCommand(const char* cmd_line);
     virtual ~RedirectionCommand() {}
@@ -181,10 +182,11 @@ public:
 };
 */
 // TODO: should it really inhirit from BuiltInCommand ?
-class CopyCommand : public BuiltInCommand {
+class CopyCommand : public ExternalCommand {
     string input_file;
     string output_file;
     bool bg_command;
+    bool samePathCheck() const;
  public:
     CopyCommand(const char* cmd_line);
     virtual ~CopyCommand() {}
@@ -236,10 +238,14 @@ private:
     const char* cmd_line_fg;
 public:
 
-    bool fg_is_pipe;
-    JobsList jobsList;
 //    TimeOut timeOut;
+//    bool fg_is_redirect;
+
+    bool fg_is_pgid;
     pid_t current_fg_pid;
+    JobsList jobsList;
+
+
     static Command *CreateCommand(const char *cmd_line);
 
     SmallShell(SmallShell const &) = delete; // disable copy ctor

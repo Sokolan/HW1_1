@@ -1,0 +1,3 @@
+1. to check to where we need to redirect errors like "invalid argument" (perror, stdout, stderr).
+
+2. fix redirectionCommand so that it will redirect in fork() process and not to the whole smash process.

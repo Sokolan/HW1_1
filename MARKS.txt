@@ -44,9 +44,12 @@
         2. things like "|" or "command |" or "| command" won't be tested.
 
 
+    kill :
+        1. according to @238_f2 incase of invalid SIG (eg -180 or 299) let kill() syscall fail and print with perror().
 
 
     errors:
         1. arguments checking should be done before perror.
+        2.
 
 

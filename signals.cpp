@@ -19,7 +19,10 @@ void ctrlZHandler(int sig_num) {
 
     SmallShell& smash = SmallShell::getInstance();
 
-    smash.fg_is_pipe ? killpg(smash.current_fg_pid, SIGSTOP) : kill(smash.current_fg_pid, SIGSTOP);
+    if(smash.current_fg_pid == smash.getPid()){
+        return;
+    }
+    smash.fg_is_pgid ? killpg(smash.current_fg_pid, SIGSTOP) : kill(smash.current_fg_pid, SIGSTOP);
 
     error = "smash: process ";
     error += to_string(SmallShell::getInstance().current_fg_pid);
@@ -35,18 +38,32 @@ void ctrlZHandler(int sig_num) {
     else{
         smash.addJob(smash.getCmdLine(), smash.current_fg_pid, true);
     }
+
+    smash.current_fg_pid = smash.getPid();
 }
 
 void ctrlCHandler(int sig_num) {
     string error = "smash: got ctrl-C\n";
     write_with_error(error);
     SmallShell& smash = SmallShell::getInstance();
-    kill(smash.current_fg_pid, SIGKILL);
+
+    if(smash.current_fg_pid == smash.getPid()){
+        return;
+    }
+
+
+    smash.fg_is_pgid ? killpg(smash.current_fg_pid, SIGKILL) : kill(smash.current_fg_pid, SIGKILL);
+
     JobsList::JobEntry* jobEntry = smash.jobsList.getJobByPid(smash.current_fg_pid);
-    error = "process ";
-    error += to_string(jobEntry->pid) += " got killed\n";
+
+    error = "smash: process ";
+    error += to_string(smash.current_fg_pid) += " was killed\n";
     write_with_error(error);
-  // TODO: Add your implementation
+    if(jobEntry != nullptr){
+        smash.jobsList.removeJobById(jobEntry->job_id);
+    }
+
+    smash.current_fg_pid = smash.getPid();
 }
 /*
 void alarmHandler(int sig_num) {
