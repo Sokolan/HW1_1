@@ -615,6 +615,7 @@ void KillCommand::execute() {
 //    }
     if(kill(jobEntry->pid, ((-1)*stoi(get_arg(1)))) == -1){
         perror("smash error: kill failed");
+        return;
     }
 
     string message = "signal number ";
