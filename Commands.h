@@ -15,7 +15,6 @@ using namespace std;
 
 
 class Command {
-// TODO: Add your data members
 
  public:
     char** args;
@@ -28,7 +27,6 @@ class Command {
     virtual void execute() = 0;
     //virtual void prepare();
     //virtual void cleanup();
-    // TODO: Add your extra methods if needed
 };
 
 class BuiltInCommand : public Command {
@@ -181,7 +179,7 @@ public:
     void execute() override;
 };
 */
-// TODO: should it really inhirit from BuiltInCommand ?
+
 class CopyCommand : public ExternalCommand {
     string input_file;
     string output_file;
@@ -201,6 +199,7 @@ public:
 };
 
 /*
+ TODO: fix TimeOut
 class TimeOut{
 public:
     class TimeEntry{
@@ -276,7 +275,6 @@ public:
     pid_t getPid() const;
 
     const char* getCmdLine() const;
-    // TODO: add extra methods as needed
 
     void addJob(const char* cmd, pid_t pidIn, bool isStopped);
 };
